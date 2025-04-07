@@ -28,7 +28,7 @@ Run gardio_demo.py will allow you to quickly try the relighting performance on y
 ### Local Relit
 To relit the image locally, use the following command:
 ```bash
-python inference.py
+python relit_inference.py
 ```
 You need to set the PATH to the input image and reference image. You can also name the number of relit examples you want to generate and the DDIM step. 
 

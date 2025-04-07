@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ```
 
 ### Demo
-Run demo.py will allow you to quickly try the relighting performance on your own images. Each run will provide relit results with 3 different seeds.
+Run gardio_demo.py will allow you to quickly try the relighting performance on your own images. Each run will provide relit results with 3 different seeds.
 
 ### Local Relit
 To relit the image locally, use the following command:

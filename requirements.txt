@@ -1,0 +1,11 @@
+open-clip-torch==2.0.1
+torch==2.5.1
+positional-encodings
+opencv-python
+einops
+OmegaConf
+torchviz
+pytorch-lightning==1.5.0
+transformers==4.19.2
+tqdm
+xformers

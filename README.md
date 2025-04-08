@@ -12,6 +12,7 @@
 ### Installation
 Follow these steps to install LumiNet and get started:
 #### Requirements
+GPU with VRAM > 11G
 
 open-clip-torch==2.0.1 (very important)
 
@@ -21,6 +22,13 @@ You can install the required dependencies by running the following command:
 ```bash
 pip install -r requirements.txt
 ```
+
+### Pretrained Models Download
+
+The weights of LumiNet and Latent-Intrinsics are hosted on [Hugging Face](https://huggingface.co/xyxingx/LumiNet). Confirmation of accepting the conditions is required. Once you accept the conditions, you can download the models, or the models will be automatically downloaded and loaded when running the demo or inference.
+
+You may need to log in to your HF account before running the code.
+
 
 ### Demo
 Run gardio_demo.py will allow you to quickly try the relighting performance on your own images. Each run will provide relit results with 3 different seeds.

@@ -65,10 +65,18 @@ If you find our work useful for your research, please consider citing:
 
 **LumiNet**
 ```bash
-@article{Xing2024luminet,
+@inproceedings{Xing2024luminet,
       title={LumiNet: Latent Intrinsics Meets Diffusion Models for Indoor Scene Relighting},
       author={Xing, Xiaoyan and Groh, Konrad and Karagolu, Sezer and Gevers, Theo and Bhattad, Anand},
-      journal={arXiv preprint arXiv:2412.00177},
-      year={2024}
+      booktitle={CVPR},
+      year={2025}}
 ```
-
+**Latent-intrinsics**
+```bash
+@inproceedings{Zhang2024Latent,
+    title={Latent Intrinsics Emerge from Training to Relight},
+    author={Zhang, Xiao and Gao, William and Jain, Seemandhar and Maire, Michael and Forsyth, David and Bhattad, Anand},
+    booktitle={NeurIPS},
+    year={2024}
+  }
+```

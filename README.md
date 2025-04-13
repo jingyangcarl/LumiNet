@@ -60,7 +60,7 @@ Note: You may need to adjust the hyperparameters (mainly timesteps) to achieve b
 
 
 ## Contact and Citation
-For any questions related to the code or model, please contact [Xiaoyan Xing](mailto: x.xing@uva.nl). 
+For any questions related to the code or model, please contact [Xiaoyan Xing](mailto:x.xing@uva.nl). 
 If you find our work useful for your research, please consider citing:
 
 **LumiNet**

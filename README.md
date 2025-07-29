@@ -59,17 +59,20 @@ python flux_cleanup.py
 Note: You may need to adjust the hyperparameters (mainly timesteps) to achieve better visual results, as the optimal values often vary depending on the input images.
 
 
+
 ## Contact and Citation
 For any questions related to the code or model, please contact [Xiaoyan Xing](mailto:x.xing@uva.nl). 
 If you find our work useful for your research, please consider citing:
 
 **LumiNet**
 ```tex
-@inproceedings{Xing2024luminet,
-      title={LumiNet: Latent Intrinsics Meets Diffusion Models for Indoor Scene Relighting},
-      author={Xing, Xiaoyan and Groh, Konrad and Karagolu, Sezer and Gevers, Theo and Bhattad, Anand},
-      booktitle={CVPR},
-      year={2025}}
+@inproceedings{xing2025luminet,
+  title={Luminet: Latent intrinsics meets diffusion models for indoor scene relighting},
+  author={Xing, Xiaoyan and Groh, Konrad and Karaoglu, Sezer and Gevers, Theo and Bhattad, Anand},
+  booktitle={Proceedings of the Computer Vision and Pattern Recognition Conference},
+  pages={442--452},
+  year={2025}
+}
 ```
 **Latent-intrinsics**
 ```tex
@@ -79,3 +82,5 @@ If you find our work useful for your research, please consider citing:
     booktitle={NeurIPS},
     year={2024}}
 ```
+## License
+The model and pretrained weights provided in this repository are licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International ([CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)) license.

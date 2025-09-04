@@ -38,9 +38,9 @@ single_image_B_tensor = single_image_B_tensor.unsqueeze(0).repeat(B, 1, 1, 1)  #
 combined_tensor = torch.cat((images_A, single_image_B_tensor), dim=1)
 
 print(f"Combined Tensor Shape: {combined_tensor.shape}")  # Should print [B, 6, H, W] if both tensors had 3 channels
-combined_tensor = combined_tensor.cuda()
+combined_tensor = combined_tensor.cuda()*2-1
 model = LatentIntrinsc()
-model = model.cuda()
+model = model.cuda().eval()
 diff_list = []
 for i in range(B):
     input_img = combined_tensor[i,...]

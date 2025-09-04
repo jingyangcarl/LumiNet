@@ -3,10 +3,10 @@
 
 🚨 **Erratum (Sept. 2025):** The results in Table 1 have been corrected after fixing a data normalization bug, which aligns with the Latent-Intrinsics evaluation code. Please refer to the updated [paper](https://arxiv.org/pdf/2412.00177) if you want to use the numbers for LumiNet and RGB2X that align with the Latent-Intrinsics evaluation protocol. The paper's core contributions, qualitative results, and user study are unaffected. We thank the Sony PlayStation team for reporting this.
 
-🆕 **Update (Sept. 2025):** We incorporate a **lightweight bypass decoder**, which replaces the original Stable Diffusion decoder to improve **identity preservation**.  
+🆕 **Update (Sept. 2025):** We incorporate a lightweight bypass decoder, which replaces the original Stable Diffusion decoder to improve identity preservation.  
 
-- This module is **orthogonal** to the original LumiNet weights.  
-- The originally released LumiNet weights (**April 2025**) remain valid and are **not affected** by this update.
+- This module is orthogonal to the original LumiNet weights.  
+- The originally released LumiNet weights (April 2025) remain valid and are not affected by this update.
 
 You can easily experience the improvement in two ways:
 

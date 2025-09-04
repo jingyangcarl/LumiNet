@@ -1,6 +1,11 @@
 # LumiNet
 [CVPR 2025] LumiNet: Latent Intrinsics Meets Diffusion Models for Indoor Scene Relighting
 
+🚨 **Erratum (Sept. 2025):** The results in Table 1 have been corrected after fixing a data normalization bug, which aligns with the Latent-Intrinsics evaluation code. Please refer to the updated paper if you want to use the correct number for LumiNet and RGB2X.  The paper's core contributions, qualitative results, and user study are unaffected. We thank the Sony PlayStation team for reporting this.
+Add new Table 1 and Table 2 with captions
+
+🆕 **Update (Sept. 2025):** We incorporate a lightweight bypass decoder, which replaces the original SD decoder to improve identity preservation. This module is orthogonal to the original LumiNet weights. The originally released LumiNet weights (March 2025) are still valid and will not be affected.
+
 ## News
 [Apr. 2025] Inference code and model are released!
 

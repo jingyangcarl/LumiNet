@@ -358,6 +358,19 @@ class ControlLDM(LatentDiffusion):
         self.only_mid_control = only_mid_control
         self.control_scales = [1.0] * 13
 
+    # load bypass decoder (optional)
+    @torch.no_grad()
+    def change_first_stage(self, checkpoint_file):
+        del self.first_stage_model
+        from modi_vae.autoencoder import AutoencoderKL
+        self.first_stage_model = AutoencoderKL(load_checkpoint=False)
+        state_dict = torch.load(checkpoint_file, map_location=torch.device("cpu"))["state_dict"]
+        new_state_dict = {}
+        for s in state_dict:
+            new_state_dict[s]=state_dict[s]
+        
+        self.first_stage_model.load_state_dict(new_state_dict)
+        print("Successfully load new auto-encoder")
 
     @torch.no_grad()
     def add_new_layers(self):
@@ -393,7 +406,7 @@ class ControlLDM(LatentDiffusion):
     @torch.no_grad()
     def get_unconditional_conditioning(self, N):
         return self.get_learned_conditioning([""] * N)
-
+    
     @torch.no_grad()
     def log_images(self, batch, N=4, n_row=2, sample=False, ddim_steps=50, ddim_eta=0.0, return_keys=None,
                    quantize_denoised=True, inpaint=True, plot_denoise_rows=False, plot_progressive_rows=True,

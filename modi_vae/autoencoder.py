@@ -11,7 +11,7 @@ from ldm.modules.ema import LitEma
 try:
     from modules.models import Encoder, Decoder
 except:
-    from my_vae.models import Encoder, Decoder
+    from modi_vae.models import Encoder, Decoder
 
 class AutoencoderKL(pl.LightningModule):
     def __init__(self,

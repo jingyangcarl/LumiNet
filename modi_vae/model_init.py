@@ -7,7 +7,7 @@ from ldm.modules.distributions.distributions import DiagonalGaussianDistribution
 try:
     from modules.models import Encoder, Decoder
 except:
-    from my_vae.models import Encoder, Decoder
+    from modi_vae.models import Encoder, Decoder
 
 
 class AutoencoderKL(pl.LightningModule):

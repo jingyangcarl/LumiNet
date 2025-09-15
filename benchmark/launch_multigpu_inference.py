@@ -7,6 +7,7 @@ Usage: python launch_multigpu_inference.py [options]
 import argparse
 import os
 import torch
+import fnmatch
 from relit_inference_multigpu import main as run_inference
 
 def parse_args():
@@ -39,6 +40,20 @@ def parse_args():
     parser.add_argument('--dry_run', action='store_true',
                        help='Print configuration and exit without running inference')
     
+    parser.add_argument('--img_formats', type=str, nargs='+',
+                       default=['jpg', 'jpeg', 'png', 'bmp', 'exr', 'hdr'],
+                       help='Supported input image formats (space-separated list)')
+    
+    parser.add_argument('--ref_formats', type=str, nargs='+',
+                       default=['png', 'exr', 'hdr'],
+                       help='Supported reference image formats (space-separated list)')
+    
+    parser.add_argument('--img_pattern', type=str, default=None,
+                       help='Pattern to match input image names (e.g., "*-albedo.png", "image_*.jpg"). Uses glob-style wildcards.')
+    
+    parser.add_argument('--ref_pattern', type=str, default=None,
+                       help='Pattern to match reference image names (e.g., "*-hdr.exr", "env_*.hdr"). Uses glob-style wildcards.')
+    
     return parser.parse_args()
 
 def main():
@@ -63,12 +78,24 @@ def main():
     # Create output directory
     os.makedirs(args.output_path, exist_ok=True)
     
-    # Count work items
-    formats = ['jpg', 'jpeg', 'png', 'bmp']
+    # Count work items using provided formats
+    img_formats = [fmt.lower() for fmt in args.img_formats]
+    ref_formats = [fmt.lower() for fmt in args.ref_formats]
+    
+    # Filter by format first
     imagesets = [f for f in os.listdir(args.input_path) 
-                if f.split('.')[-1].lower() in formats]
+                if f.split('.')[-1].lower() in img_formats]
     refsets = [f for f in os.listdir(args.reference_path) 
-              if f.split('.')[-1].lower() in formats]
+              if f.split('.')[-1].lower() in ref_formats]
+    
+    # Apply pattern matching if specified
+    if args.img_pattern:
+        imagesets = [f for f in imagesets if fnmatch.fnmatch(f, args.img_pattern)]
+        print(f"Applied input pattern '{args.img_pattern}': {len(imagesets)} images match")
+    
+    if args.ref_pattern:
+        refsets = [f for f in refsets if fnmatch.fnmatch(f, args.ref_pattern)]
+        print(f"Applied reference pattern '{args.ref_pattern}': {len(refsets)} references match")
     
     total_pairs = len(imagesets) * len(refsets)
     total_iterations = total_pairs * args.iterations
@@ -79,6 +106,12 @@ def main():
     print(f"Input path:          {args.input_path}")
     print(f"Reference path:      {args.reference_path}")
     print(f"Output path:         {args.output_path}")
+    print(f"Input formats:       {', '.join(args.img_formats)}")
+    print(f"Reference formats:   {', '.join(args.ref_formats)}")
+    if args.img_pattern:
+        print(f"Input pattern:       {args.img_pattern}")
+    if args.ref_pattern:
+        print(f"Reference pattern:   {args.ref_pattern}")
     print(f"Images found:        {len(imagesets)}")
     print(f"References found:    {len(refsets)}")
     print(f"Total pairs:         {total_pairs}")
@@ -101,7 +134,11 @@ def main():
         'many_iter': args.iterations,
         'PATH_OF_INPUT_IMAGE': args.input_path,
         'PATH_OF_REFERENCE': args.reference_path,
-        'PATH_OF_OUTPUT': args.output_path
+        'PATH_OF_OUTPUT': args.output_path,
+        'img_formats': img_formats,
+        'ref_formats': ref_formats,
+        'img_pattern': args.img_pattern,
+        'ref_pattern': args.ref_pattern
     }
     
     print("\nStarting multi-GPU inference...")

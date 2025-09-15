@@ -1,6 +1,27 @@
 {
     "configurations": [
         {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/benchmark/launch_multigpu_inference.py",
+            "console": "integratedTerminal",
+            "env": {
+                "OPENCV_IO_ENABLE_OPENEXR": "1",
+                "DATA_DIR": "interiorverse/samples/L3D124S8ENDIDRGLFYUI5NFSLUF3P3WA888"
+            },
+            "args": [
+                "--gpus", "0",
+                "--input_path", "/lustre/fsw/portfolios/maxine/users/jingya/data/interiorverse/samples/L3D124S8ENDIDRGLFYUI5NFSLUF3P3WA888",
+                "--img_formats", "exr",
+                "--img_pattern", "*_im.exr",
+                "--reference_path", "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs",
+                "--ref_formats", "png",
+                "--output_path", "./output/benchmark/interiorverse/samples/L3D124S8ENDIDRGLFYUI5NFSLUF3P3WA888",
+                "--iterations", "2"
+            ]
+        },
+        {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",

@@ -18,7 +18,53 @@ import random
 from huggingface_hub import hf_hub_download
 import itertools
 import time
+import fnmatch
 from typing import List, Tuple
+
+def load_image_with_hdr_support(image_path: str) -> np.ndarray:
+    """
+    Load image with HDR support. Handles both LDR and HDR formats.
+    For HDR images (EXR, HDR), applies tone mapping to convert to LDR.
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        Image as numpy array in RGB format, normalized to [0, 1]
+    """
+    file_ext = os.path.splitext(image_path)[1].lower()
+    
+    if file_ext in ['.exr', '.hdr']:
+        # Load HDR image
+        image = cv2.imread(image_path, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError(f"Could not load HDR image: {image_path}")
+        
+        # Convert BGR to RGB
+        image = image[..., ::-1]
+        
+        # Apply tone mapping to convert HDR to LDR
+        # Using Reinhard tone mapping
+        tone_mapped = image / (1.0 + image)
+        
+        # Alternatively, you could use OpenCV's built-in tone mappers:
+        # tonemap = cv2.createTonemapReinhard(gamma=2.2, intensity=0.0, light_adapt=1.0, color_adapt=0.0)
+        # tone_mapped = tonemap.process(image)
+        
+        # Ensure values are in [0, 1] range
+        tone_mapped = np.clip(tone_mapped, 0, 1)
+        
+        return tone_mapped
+    else:
+        # Load LDR image (JPG, PNG, etc.)
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image: {image_path}")
+        
+        # Convert BGR to RGB and normalize to [0, 1]
+        image = image[..., ::-1] / 255.0
+        
+        return image
 
 def setup_model(gpu_id: int, new_decoder: bool = False):
     """Setup model on specific GPU"""
@@ -56,29 +102,25 @@ def process_image_reference_pair(
         model, ddim_sampler = setup_model(gpu_id, new_decoder)
         
         # Extract filenames for folder naming
-        imn = os.path.basename(img_path)
-        fn = os.path.basename(shd_path)
-        fold_name = os.path.join(output_path, imn + '_' + fn)
-        
-        if not os.path.exists(fold_name):
-            os.makedirs(fold_name, exist_ok=True)
-            
-        if len(os.listdir(fold_name)) > 20:
-            print(f'GPU {gpu_id}: Skipping existing: {imn}_{fn}')
-            return
-        
+        imn = os.path.basename(img_path).replace('.', '_')
+        fn = os.path.basename(shd_path).replace('.', '_')
+        folder_name_static = os.path.join(output_path, 'FR', 'static', 'per-light', fn)
+        os.makedirs(folder_name_static, exist_ok=True)
+
         print(f'GPU {gpu_id}: Processing {imn} with {fn}')
         
         # Load and preprocess images once
-        input_image_full = cv2.imread(img_path)[..., ::-1] / 255.0
-        input_shd_full = cv2.imread(shd_path)[..., ::-1] / 255.0
+        input_image_full = load_image_with_hdr_support(img_path)
+        input_shd_full = load_image_with_hdr_support(shd_path)
         orig_h, orig_w = input_image_full.shape[:2]
         
         input_image = cv2.resize(input_image_full, (512, 512))
         input_shd = cv2.resize(input_shd_full, (512, 512))
         
         for i in range(many_iter):
-            seeds = torch.seed()
+            # Set random seed for reproducibility
+            # seeds = torch.seed()
+            seeds = '20250915'
             torch.manual_seed(seeds)
             torch.cuda.manual_seed(seeds)
             random.seed(seeds)
@@ -128,9 +170,16 @@ def process_image_reference_pair(
             # Resize back to original size before saving
             x_samples_resized = cv2.resize(x_samples, (orig_w, orig_h), interpolation=cv2.INTER_LANCZOS4)
 
-            image_name = os.path.basename(img_path)
-            Image.fromarray(x_samples_resized).save(os.path.join(fold_name, f'{seeds}_{image_name}'))
-        
+            image_name = os.path.basename(img_path).split('.')[0]
+            os.makedirs(os.path.join(folder_name_static, 'separate'), exist_ok=True)
+            Image.fromarray(x_samples_resized).save(os.path.join(folder_name_static, 'separate', f'{seeds}_{image_name}.png'))
+
+            # add a concatenated image for reference, where the shd image should be resized to the size height as input image with aspect ratio maintained
+            input_shd_full_resized = cv2.resize(input_shd_full, (input_shd_full.shape[1] * orig_h // input_shd_full.shape[0], orig_h), interpolation=cv2.INTER_LANCZOS4)
+            concat_image = np.concatenate((input_image_full, input_shd_full_resized, x_samples_resized / 255.), axis=1)
+            os.makedirs(os.path.join(folder_name_static, 'mosaic'), exist_ok=True)
+            Image.fromarray((concat_image * 255).astype(np.uint8)).save(os.path.join(folder_name_static, 'mosaic', f'{seeds}_{image_name}_concat.png'))
+
         print(f'GPU {gpu_id}: Completed {imn} with {fn}')
         
     except Exception as e:
@@ -181,7 +230,11 @@ def main(custom_config=None):
             'many_iter': 50,
             'PATH_OF_INPUT_IMAGE': '/lustre/fsw/portfolios/maxine/users/jingya/data/multi_illumination/multi_illumination_test_mip2_jpg/everett_dining1',
             'PATH_OF_REFERENCE': '/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs',
-            'PATH_OF_OUTPUT': './output'
+            'PATH_OF_OUTPUT': './output',
+            'img_formats': ['jpg', 'jpeg', 'png', 'bmp', 'exr', 'hdr'],
+            'ref_formats': ['png', 'exr', 'hdr'],
+            'img_pattern': None,
+            'ref_pattern': None
         }
     else:
         config = custom_config
@@ -197,10 +250,26 @@ def main(custom_config=None):
     imagesets = os.listdir(config['PATH_OF_INPUT_IMAGE'])
     refsets = os.listdir(config['PATH_OF_REFERENCE'])
     
-    formats = ['jpg', 'jpeg', 'png', 'bmp']
-    imagesets = [imn for imn in imagesets if imn.split('.')[-1].lower() in formats]
-    refsets = [fn for fn in refsets if fn.split('.')[-1].lower() in formats]
+    # Use formats from config, with fallback to defaults
+    img_formats = config.get('img_formats', ['jpg', 'jpeg', 'png', 'bmp', 'exr', 'hdr'])
+    ref_formats = config.get('ref_formats', ['png', 'exr', 'hdr'])
     
+    # Filter by format first
+    imagesets = [imn for imn in imagesets if imn.split('.')[-1].lower() in img_formats]
+    refsets = [fn for fn in refsets if fn.split('.')[-1].lower() in ref_formats]
+    
+    # Apply pattern matching if specified
+    img_pattern = config.get('img_pattern')
+    ref_pattern = config.get('ref_pattern')
+    
+    if img_pattern:
+        imagesets = [imn for imn in imagesets if fnmatch.fnmatch(imn, img_pattern)]
+        print(f"Applied input pattern '{img_pattern}': {len(imagesets)} images match")
+    
+    if ref_pattern:
+        refsets = [fn for fn in refsets if fnmatch.fnmatch(fn, ref_pattern)]
+        print(f"Applied reference pattern '{ref_pattern}': {len(refsets)} references match")
+
     print(f"Found {len(imagesets)} images and {len(refsets)} reference images")
     
     # Create all image-reference pairs

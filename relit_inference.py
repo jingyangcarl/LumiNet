@@ -113,7 +113,7 @@ for imn in imagesets:
             x_samples_resized = cv2.resize(x_samples, (orig_w, orig_h), interpolation=cv2.INTER_LANCZOS4)
 
             image_name = img_path.split('/')[-1]
-            Image.fromarray(x_samples_resized).save(fold_name + str(seeds) + '_' + image_name)
+            Image.fromarray(x_samples_resized).save(fold_name + '/' + str(seeds) + '_' + image_name)
 
 
 

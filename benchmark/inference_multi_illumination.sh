@@ -17,10 +17,10 @@ DATA_DIR=multi_illumination/multi_illumination_test_mip2_jpg/everett_dining1
 python benchmark/launch_multigpu_inference.py \
     --gpus "0,1,2,3,4,5,6,7" \
     --input_path /lustre/fsw/portfolios/maxine/users/jingya/data/$DATA_DIR \
-    --input_formats jpg \
-    --input_pattern "*-mip2.jpg" \
+    --img_formats jpg \
+    --img_pattern "*_mip2.jpg" \
     --reference_path /lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs \
-    --reference_formats png \
+    --ref_formats png \
     --output_path ./output/benchmark/$DATA_DIR \
     --iterations 1
 wait

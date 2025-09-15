@@ -30,15 +30,23 @@ many_iter = 50
 model.parameterization = "v"
 ddim_sampler = DDIMSampler(model)
 
-imagesets = PATH_OF_INPUT_IMAGE #add your own data_path here
+PATH_OF_INPUT_IMAGE = '/lustre/fsw/portfolios/maxine/users/jingya/data/multi_illumination/multi_illumination_test_mip2_jpg/everett_dining1'
+PATH_OF_REFERENCE = '/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs'
+PATH_OF_OUTPUT = './output'
 
-refsets = PATH_OF_REFERENCE  #add your own data_path here
+imagesets = os.listdir(PATH_OF_INPUT_IMAGE) #add your own data_path here
+refsets = os.listdir(PATH_OF_REFERENCE)  #add your own data_path here
 output_path= PATH_OF_OUTPUT
+
+formats = ['jpg', 'jpeg', 'png', 'bmp']
+imagesets = [imn for imn in imagesets if imn.split('.')[-1].lower() in formats]
+refsets = [fn for fn in refsets if fn.split('.')[-1].lower() in formats]
+
 for imn in imagesets:
-    img_path = PATH_OF_INPUT_IMAGE + imn
+    img_path = os.path.join(PATH_OF_INPUT_IMAGE, imn)
     for fn in refsets:
-        shd_path = PATH_OF_INPUT_REFERENCE + fn  # keep your original path logic
-        fold_name = output_path + imn + '_' + fn + '/'
+        shd_path = os.path.join(PATH_OF_REFERENCE, fn)  # keep your original path logic
+        fold_name = os.path.join(output_path, imn + '_' + fn)
         if not os.path.exists(fold_name):
             os.makedirs(fold_name)
         if len(os.listdir(fold_name)) > 20:

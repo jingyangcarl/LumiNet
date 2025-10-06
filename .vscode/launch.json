@@ -16,7 +16,9 @@
                 "--img_formats", "exr",
                 "--img_pattern", "*_im.exr",
                 "--reference_path", "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs",
-                "--ref_formats", "png",
+                "--ref_formats", "png", "hdr",
+                "--use_predefined_env_list",
+                "--rename_lights",
                 "--output_path", "./output/benchmark/interiorverse/samples/L3D124S8ENDIDRGLFYUI5NFSLUF3P3WA888",
                 "--iterations", "2"
             ]

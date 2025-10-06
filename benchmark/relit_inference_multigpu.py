@@ -2,6 +2,7 @@ from share import *
 
 import sys
 import os
+os.environ['OPENCV_IO_ENABLE_OPENEXR'] = '1'
 # Add parent directory to path to find cldm module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -20,6 +21,7 @@ import itertools
 import time
 import fnmatch
 from typing import List, Tuple
+from glob import glob
 
 def load_image_with_hdr_support(image_path: str) -> np.ndarray:
     """
@@ -43,16 +45,21 @@ def load_image_with_hdr_support(image_path: str) -> np.ndarray:
         # Convert BGR to RGB
         image = image[..., ::-1]
         
+        # compute the percentile value for normalization
+        p95 = np.percentile(image, 95)
+        
         # Apply tone mapping to convert HDR to LDR
         # Using Reinhard tone mapping
-        tone_mapped = image / (1.0 + image)
+        # tone_mapped = image / (1.0 + image)
+        ldr = np.clip(image / p95, 0, 1)
+        tone_mapped = ldr ** (1/2.2)  # gamma correction
         
         # Alternatively, you could use OpenCV's built-in tone mappers:
         # tonemap = cv2.createTonemapReinhard(gamma=2.2, intensity=0.0, light_adapt=1.0, color_adapt=0.0)
         # tone_mapped = tonemap.process(image)
         
         # Ensure values are in [0, 1] range
-        tone_mapped = np.clip(tone_mapped, 0, 1)
+        # tone_mapped = np.clip(tone_mapped, 0, 1)
         
         return tone_mapped
     else:
@@ -90,6 +97,7 @@ def process_image_reference_pair(
     gpu_id: int,
     img_path: str,
     shd_path: str,
+    output_name: str,
     output_path: str,
     many_iter: int,
     new_decoder: bool,
@@ -103,17 +111,23 @@ def process_image_reference_pair(
         
         # Extract filenames for folder naming
         imn = os.path.basename(img_path).replace('.', '_')
-        fn = os.path.basename(shd_path).replace('.', '_')
-        folder_name_static = os.path.join(output_path, 'FR', 'static', 'per-light', fn)
+        # Use output_name for folder naming (this handles renaming)
+        fn = output_name.split('.')[0]  # remove file extension for folder name
+        folder_name_static = os.path.join(output_path, 'FR', 'static', fn)
         os.makedirs(folder_name_static, exist_ok=True)
 
-        print(f'GPU {gpu_id}: Processing {imn} with {fn}')
+        print(f'GPU {gpu_id}: Processing {imn} with {output_name} (source: {os.path.basename(shd_path)})')
         
         # Load and preprocess images once
         input_image_full = load_image_with_hdr_support(img_path)
         input_shd_full = load_image_with_hdr_support(shd_path)
         orig_h, orig_w = input_image_full.shape[:2]
         
+        # for multi-illumination, we need to project to allign
+        if 'chrome_envmap.exr' in shd_path:
+            input_shd_full = np.flip(input_shd_full, axis=1)
+            input_shd_full = np.roll(input_shd_full, input_shd_full.shape[1] // 2, axis=1)
+
         input_image = cv2.resize(input_image_full, (512, 512))
         input_shd = cv2.resize(input_shd_full, (512, 512))
         
@@ -175,12 +189,23 @@ def process_image_reference_pair(
             Image.fromarray(x_samples_resized).save(os.path.join(folder_name_static, 'separate', f'{seeds}_{image_name}.png'))
 
             # add a concatenated image for reference, where the shd image should be resized to the size height as input image with aspect ratio maintained
-            input_shd_full_resized = cv2.resize(input_shd_full, (input_shd_full.shape[1] * orig_h // input_shd_full.shape[0], orig_h), interpolation=cv2.INTER_LANCZOS4)
-            concat_image = np.concatenate((input_image_full, input_shd_full_resized, x_samples_resized / 255.), axis=1)
+            # input_shd_full_resized = cv2.resize(input_shd_full, (input_shd_full.shape[1] * orig_h // input_shd_full.shape[0], orig_h), interpolation=cv2.INTER_LANCZOS4)
+            # concat_image = np.concatenate((input_image_full, input_shd_full_resized, x_samples_resized / 255.), axis=1)
+            # os.makedirs(os.path.join(folder_name_static, 'mosaic'), exist_ok=True)
+            # Image.fromarray((concat_image * 255).astype(np.uint8)).save(os.path.join(folder_name_static, 'mosaic', f'{seeds}_{image_name}_concat.png'))
+            
+            # stack in the following order:
+            # row 1: |input image | shd image|
+            # row 2: |black image | output image|
+            black_image = np.zeros_like(input_image_full)
+            input_shd_full_resized = cv2.resize(input_shd_full, (input_image_full.shape[1], input_image_full.shape[0]), interpolation=cv2.INTER_LANCZOS4)
+            row1 = np.concatenate((input_image_full, input_shd_full_resized), axis=1)
+            row2 = np.concatenate((black_image, x_samples_resized / 255.), axis=1)
+            concat_image = np.concatenate((row1, row2), axis=0)
             os.makedirs(os.path.join(folder_name_static, 'mosaic'), exist_ok=True)
             Image.fromarray((concat_image * 255).astype(np.uint8)).save(os.path.join(folder_name_static, 'mosaic', f'{seeds}_{image_name}_concat.png'))
 
-        print(f'GPU {gpu_id}: Completed {imn} with {fn}')
+        print(f'GPU {gpu_id}: Completed {imn} with {output_name}')
         
     except Exception as e:
         print(f'GPU {gpu_id}: Error processing {img_path} with {shd_path}: {str(e)}')
@@ -198,12 +223,13 @@ def worker_process(gpu_id: int, work_queue: mp.Queue, config: dict):
             if work_item is None:  # Sentinel value to stop
                 break
                 
-            img_path, shd_path = work_item
+            img_path, shd_path, output_name = work_item
             
             process_image_reference_pair(
                 gpu_id=gpu_id,
                 img_path=img_path,
                 shd_path=shd_path,
+                output_name=output_name,
                 output_path=config['output_path'],
                 many_iter=config['many_iter'],
                 new_decoder=config['new_decoder'],
@@ -234,7 +260,10 @@ def main(custom_config=None):
             'img_formats': ['jpg', 'jpeg', 'png', 'bmp', 'exr', 'hdr'],
             'ref_formats': ['png', 'exr', 'hdr'],
             'img_pattern': None,
-            'ref_pattern': None
+            'ref_pattern': None,
+            'original_refsets': [],
+            'light_rename_mapping': [],
+            'rename_lights': False
         }
     else:
         config = custom_config
@@ -242,13 +271,23 @@ def main(custom_config=None):
     # Detect available GPUs
     num_gpus = torch.cuda.device_count()
     if num_gpus == 0:
-        raise RuntimeError("No CUDA GPUs available")
+        # raise RuntimeError("No CUDA GPUs available")
+        pass
     
     print(f"Found {num_gpus} GPUs")
     
     # Get image and reference lists
     imagesets = os.listdir(config['PATH_OF_INPUT_IMAGE'])
-    refsets = os.listdir(config['PATH_OF_REFERENCE'])
+    
+    # Handle reference files based on configuration
+    if 'original_refsets' in config and config['original_refsets']:
+        # Use original refsets if provided (from predefined list or custom selection)
+        refsets = config['original_refsets']
+        print(f"Using provided reference list: {len(refsets)} files")
+    else:
+        # Fallback to directory scanning
+        refsets = os.listdir(config['PATH_OF_REFERENCE'])
+        print(f"Scanning reference directory: {len(refsets)} files found")
     
     # Use formats from config, with fallback to defaults
     img_formats = config.get('img_formats', ['jpg', 'jpeg', 'png', 'bmp', 'exr', 'hdr'])
@@ -272,13 +311,33 @@ def main(custom_config=None):
 
     print(f"Found {len(imagesets)} images and {len(refsets)} reference images")
     
+    # Get light renaming mapping if available
+    light_mapping = config.get('light_rename_mapping', {})
+    rename_lights = config.get('rename_lights', False)
+    
+    if rename_lights and light_mapping:
+        print(f"Light renaming enabled: {len(light_mapping)} files will use renamed output folders")
+    
     # Create all image-reference pairs
+    multi_illumination_reconstruction = True
     work_items = []
     for imn in imagesets:
         img_path = os.path.join(config['PATH_OF_INPUT_IMAGE'], imn)
         for fn in refsets:
             shd_path = os.path.join(config['PATH_OF_REFERENCE'], fn)
-            work_items.append((img_path, shd_path))
+            # Get the output name (renamed if renaming is enabled, otherwise original)
+            output_name = light_mapping.get(fn, fn) if rename_lights else fn
+            work_items.append((img_path, shd_path, output_name))
+        
+    
+        if multi_illumination_reconstruction and 'multi_illumination' in config['PATH_OF_INPUT_IMAGE']:
+            
+            dataset_scene_root = '/lustre/fsw/portfolios/maxine/users/jingya/data/multi_illumination/multi_illumination_test_mip2_jpg'
+            scenes = sorted(os.listdir(dataset_scene_root))
+            scene_id = scenes.index(os.path.basename(os.path.normpath(config['PATH_OF_INPUT_IMAGE'])))
+            lighting_id = int(imn.split('_')[1].split('.')[0])
+            envlight_path = f'/lustre/fsw/portfolios/nvr/users/kahe/data/UniRelight_paper_data/MIT_test_data_diff12_fixLighting/{scene_id:06d}.{lighting_id:04d}/{lighting_id:04d}.chrome_envmap.exr'
+            work_items.append((img_path, envlight_path, 'multi_illumination_reconstruction'))
     
     print(f"Total work items: {len(work_items)}")
     

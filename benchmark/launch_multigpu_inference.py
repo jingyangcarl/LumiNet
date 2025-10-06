@@ -10,6 +10,42 @@ import torch
 import fnmatch
 from relit_inference_multigpu import main as run_inference
 
+# Predefined environment lists
+ENV_LIGHT_PATH_LIST = [
+    ## benchmark HDRIs
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs/blaubeuren_night_4k.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs/hdr_2_hdr0001_resized_to_2k.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs/studio_small_08_4k_rotated.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs/vkl_mid.hdr",
+    # OLAT
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_000.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_001.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_002.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_003.hdr",
+    # "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_004.hdr",
+    # "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_005.hdr",
+    ## default HDRIs
+    # "/lustre/fsw/portfolios/nvr/users/ruofanl/data/hdri/hdriheaven_original_sunny_vondelpark_2k.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/ruofanl/data/hdri/hdriheaven_original_pink_sunrise_2k.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/ruofanl/data/hdri/hdriheaven_original_street_lamp_2k.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/ruofanl/data/hdri/hdriheaven_original_circus_arena_2k.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/ruofanl/data/hdri/hdriheaven_original_fireplace_2k.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/zianw/sample_hdris/warm_bar_2k.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/zianw/sample_hdris/dreifaltigkeitsberg_2k.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/zianw/sample_hdris/rosendal_plains_1_2k.hdr",
+    ## media2 HDR samples 1
+    # "/lustre/fs12/portfolios/nvr/users/zianw/experiments/media2_samples/input_HDR/blaubeuren_night_4k.hdr",
+    # "/lustre/fs12/portfolios/nvr/users/zianw/experiments/media2_samples/input_HDR/christmas_photo_studio_07_4k_rotated.hdr",
+    # "/lustre/fs12/portfolios/nvr/users/zianw/experiments/media2_samples/input_HDR/circus_arena_4k.hdr",
+    # "/lustre/fs12/portfolios/nvr/users/zianw/experiments/media2_samples/input_HDR/hdr_2_hdr0001_resized_to_2k.hdr",
+    # "/lustre/fs12/portfolios/nvr/users/zianw/experiments/media2_samples/input_HDR/studio_small_08_4k_rotated.hdr",
+    # "/lustre/fs12/portfolios/nvr/users/zianw/experiments/media2_samples/input_HDR/vkl_mid.hdr",
+    ## media2 HDR samples 2
+    # "/lustre/fsw/portfolios/nvr/users/zianw/experiments/media2_ICT_data/HDR/blaubeuren_night_4k_FrontLight_flipped.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/zianw/experiments/media2_ICT_data/HDR/hdr_2_hdr0001_resized_to_2k_FrontLight_flipped.hdr",
+    # "/lustre/fsw/portfolios/nvr/users/zianw/experiments/media2_ICT_data/HDR/vkl_mid_FrontLight_flipped.hdr",
+]
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Multi-GPU Relighting Inference')
     
@@ -51,8 +87,17 @@ def parse_args():
     parser.add_argument('--img_pattern', type=str, default=None,
                        help='Pattern to match input image names (e.g., "*-albedo.png", "image_*.jpg"). Uses glob-style wildcards.')
     
+    parser.add_argument('--first_n', type=int, default=None,
+                       help='If set, only process the first N images from the input directory')
+    
     parser.add_argument('--ref_pattern', type=str, default=None,
                        help='Pattern to match reference image names (e.g., "*-hdr.exr", "env_*.hdr"). Uses glob-style wildcards.')
+    
+    parser.add_argument('--use_predefined_env_list', action='store_true',
+                       help='Enable using a predefined environment list instead of scanning the reference directory')
+    
+    parser.add_argument('--rename_lights', action='store_true',
+                       help='Enable renaming of lighting files in sequential order with pattern "light-{:04d}" (e.g., light-0000, light-0001, etc.)')
     
     return parser.parse_args()
 
@@ -85,17 +130,58 @@ def main():
     # Filter by format first
     imagesets = [f for f in os.listdir(args.input_path) 
                 if f.split('.')[-1].lower() in img_formats]
-    refsets = [f for f in os.listdir(args.reference_path) 
-              if f.split('.')[-1].lower() in ref_formats]
+    if args.first_n is not None:
+        imagesets = imagesets[:args.first_n]
+    
+    # Handle reference files - use predefined list if specified, otherwise scan directory
+    if args.use_predefined_env_list:
+        # Use predefined environment list
+        predefined_files = ENV_LIGHT_PATH_LIST[:4]
+        refsets = []
+        for ref_path in predefined_files:
+            if os.path.exists(ref_path):
+                # Check if file has valid extension
+                if ref_path.split('.')[-1].lower() in ref_formats:
+                    refsets.append(ref_path)
+                else:
+                    print(f"Warning: Skipping {ref_path} - unsupported format")
+            else:
+                print(f"Warning: Reference file not found: {ref_path}")
+        print(f"Using predefined environment list: {len(refsets)} files found")
+    else:
+        # Original behavior - scan directory
+        refsets = [f for f in os.listdir(args.reference_path) 
+                  if f.split('.')[-1].lower() in ref_formats]
     
     # Apply pattern matching if specified
     if args.img_pattern:
         imagesets = [f for f in imagesets if fnmatch.fnmatch(f, args.img_pattern)]
         print(f"Applied input pattern '{args.img_pattern}': {len(imagesets)} images match")
     
-    if args.ref_pattern:
+    if args.ref_pattern and not args.use_predefined_env_list:
+        # Only apply pattern matching if not using predefined list
         refsets = [f for f in refsets if fnmatch.fnmatch(f, args.ref_pattern)]
         print(f"Applied reference pattern '{args.ref_pattern}': {len(refsets)} references match")
+    elif args.ref_pattern and args.use_predefined_env_list:
+        print("Warning: ref_pattern ignored when using predefined_env_list")
+    
+    # Handle lighting renaming if enabled
+    original_refsets = refsets.copy()  # Keep original names for file access
+    if args.rename_lights:
+        # Create mapping from original names to new names
+        light_mapping = {}
+        for i, ref_file in enumerate(refsets):
+            new_name = f"light-{i:04d}"
+            # Preserve the file extension
+            ext = os.path.splitext(ref_file)[1]
+            new_name_with_ext = new_name + ext
+            light_mapping[ref_file] = new_name_with_ext
+        
+        print(f"Light renaming enabled: {len(refsets)} files will be renamed in pattern 'light-{{:04d}}'")
+        for orig, new in light_mapping.items():
+            print(f"  {orig} -> {new}")
+    else:
+        light_mapping = {ref: ref for ref in refsets}  # Identity mapping
     
     total_pairs = len(imagesets) * len(refsets)
     total_iterations = total_pairs * args.iterations
@@ -110,8 +196,14 @@ def main():
     print(f"Reference formats:   {', '.join(args.ref_formats)}")
     if args.img_pattern:
         print(f"Input pattern:       {args.img_pattern}")
-    if args.ref_pattern:
+    if args.ref_pattern and not args.use_predefined_env_list:
         print(f"Reference pattern:   {args.ref_pattern}")
+    if args.use_predefined_env_list:
+        print(f"Predefined env list: {args.use_predefined_env_list}")
+    if args.rename_lights:
+        print(f"Light renaming:      Enabled (pattern: light-{{:04d}})")
+    else:
+        print(f"Light renaming:      Disabled")
     print(f"Images found:        {len(imagesets)}")
     print(f"References found:    {len(refsets)}")
     print(f"Total pairs:         {total_pairs}")
@@ -138,7 +230,10 @@ def main():
         'img_formats': img_formats,
         'ref_formats': ref_formats,
         'img_pattern': args.img_pattern,
-        'ref_pattern': args.ref_pattern
+        'ref_pattern': args.ref_pattern,
+        'original_refsets': original_refsets,  # Original file names for accessing files
+        'light_rename_mapping': light_mapping,        # Mapping from original to renamed files
+        'rename_lights': args.rename_lights    # Whether renaming is enabled
     }
     
     print("\nStarting multi-GPU inference...")

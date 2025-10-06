@@ -5,40 +5,42 @@
 export HF_HOME=/lustre/fsw/portfolios/maxine/users/jingya/.cache/huggingface
 export PIP_CACHE_DIR=/lustre/fsw/portfolios/maxine/users/jingya/.cache/pip
 
-eval "$(conda shell.bash hook)"
-conda activate luminet
 
 # single gpu
 # python relit_inference.py
 
 # multi-gpu (change the --gpus and --ntasks-per-node according to your need)
-export DATASET_ROOT="/lustre/fsw/portfolios/maxine/users/jingya/data/multi_illumination/multi_illumination_test_mip2_jpg"
+
+export OPENCV_IO_ENABLE_OPENEXR=1 # enable openexr support in opencv
+
+export DATASET_ROOT="/lustre/fsw/portfolios/maxine/users/jingya/data/interiorverse/samples/"
+
 
 # list all folders in DATASET_ROOT
 for folder in "$DATASET_ROOT"/*/; do
     folder_name=$(basename "$folder")
 
     # Check if folder_name is in skip_folders
-    skip_folders=("everett_dining1" "everett_dining2" "everett_kitchen12" "everett_kitchen14")
-    skip=false
-    for skip_folder in "${skip_folders[@]}"; do
-        if [[ "$folder_name" == "$skip_folder" ]]; then
-            skip=true
-            break
-        fi
-    done
+    # skip_folders=("everett_dining1" "everett_dining2" "everett_kitchen12" "everett_kitchen14")
+    # skip=false
+    # for skip_folder in "${skip_folders[@]}"; do
+    #     if [[ "$folder_name" == "$skip_folder" ]]; then
+    #         skip=true
+    #         break
+    #     fi
+    # done
 
-    if $skip; then
-        echo "Skipping folder: $folder_name"
-        continue
-    fi
+    # if $skip; then
+    #     echo "Skipping folder: $folder_name"
+    #     continue
+    # fi
 
-    DATA_DIR=multi_illumination/multi_illumination_test_mip2_jpg/$folder_name
+    DATA_DIR=interiorverse/samples/$folder_name
     python benchmark/launch_multigpu_inference.py \
         --gpus "0,1,2,3,4,5,6,7" \
         --input_path /lustre/fsw/portfolios/maxine/users/jingya/data/$DATA_DIR \
-        --img_formats jpg \
-        --img_pattern "*_mip2.jpg" \
+        --img_formats exr \
+        --img_pattern "*_im.exr" \
         --reference_path /lustre/fsw/portfolios/maxine/users/jingya/data/hdris/benchmarking_HDRs \
         --ref_formats png hdr \
         --use_predefined_env_list \

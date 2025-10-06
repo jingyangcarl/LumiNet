@@ -19,7 +19,31 @@ for folder in "$DATASET_ROOT"/*/; do
     folder_name=$(basename "$folder")
 
     # Check if folder_name is in skip_folders
-    skip_folders=("everett_dining1" "everett_dining2" "everett_kitchen12" "everett_kitchen14")
+    skip_folders=(
+        "everett_dining1" 
+        "everett_dining2" 
+        "everett_kitchen12" 
+        "everett_kitchen14" 
+        "everett_kitchen17" 
+        "everett_kitchen18"
+        "everett_kitchen2"
+        "everett_kitchen4"
+        "everett_kitchen5"
+        "everett_kitchen6"
+        "everett_kitchen7"
+        "everett_kitchen8"
+        "everett_kitchen9"
+        "everett_living2"
+        "everett_living4"
+        "everett_lobby1"
+        "everett_lobby2"
+        "everett_lobby11"
+        "everett_lobby12"
+        "everett_lobby13"
+        "everett_lobby14"
+        "everett_lobby15"
+        "everett_lobby16"
+    )
     skip=false
     for skip_folder in "${skip_folders[@]}"; do
         if [[ "$folder_name" == "$skip_folder" ]]; then

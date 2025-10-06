@@ -22,8 +22,8 @@ ENV_LIGHT_PATH_LIST = [
     "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_001.hdr",
     "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_002.hdr",
     "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_003.hdr",
-    # "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_004.hdr",
-    # "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_005.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_004.hdr",
+    "/lustre/fsw/portfolios/maxine/users/jingya/data/hdris/olat/octahedron/6vertices/equirectangular/hdr/light_005.hdr",
     ## default HDRIs
     # "/lustre/fsw/portfolios/nvr/users/ruofanl/data/hdri/hdriheaven_original_sunny_vondelpark_2k.hdr",
     # "/lustre/fsw/portfolios/nvr/users/ruofanl/data/hdri/hdriheaven_original_pink_sunrise_2k.hdr",
@@ -136,7 +136,7 @@ def main():
     # Handle reference files - use predefined list if specified, otherwise scan directory
     if args.use_predefined_env_list:
         # Use predefined environment list
-        predefined_files = ENV_LIGHT_PATH_LIST[:4]
+        predefined_files = ENV_LIGHT_PATH_LIST
         refsets = []
         for ref_path in predefined_files:
             if os.path.exists(ref_path):

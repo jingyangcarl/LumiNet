@@ -327,6 +327,19 @@ def main(custom_config=None):
             shd_path = os.path.join(config['PATH_OF_REFERENCE'], fn)
             # Get the output name (renamed if renaming is enabled, otherwise original)
             output_name = light_mapping.get(fn, fn) if rename_lights else fn
+            
+            # only process '0008' and '0009'
+            # if output_name.split('.')[0].split('-')[-1] not in ['0008', '0009']:
+            #     print(f"Skipping pair: Image '{imn}' with Reference '{fn}' as output '{output_name}'")
+            #     continue
+            # ask user input to confirm append to the list
+            # user_input = input(f"Add pair: Image '{imn}' with Reference '{fn}' as output '{output_name}'? (y/n): ")
+            # if user_input.lower() == 'y':
+            #     pass
+            # else:
+            #     print(f"Skipping pair: Image '{imn}' with Reference '{fn}'")
+            #     continue
+            
             work_items.append((img_path, shd_path, output_name))
         
     
